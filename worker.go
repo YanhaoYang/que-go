@@ -70,17 +70,22 @@ func NewWorker(c *Client, m WorkMap) *Worker {
 // Work pulls jobs off the Worker's Queue at its Interval. This function only
 // returns after Shutdown() is called, so it should be run in its own goroutine.
 func (w *Worker) Work() {
+	dummy := make(chan time.Time)
+	close(dummy)
+
 	for {
+		var ch <-chan time.Time
+		didWork := w.WorkOne()
+		if didWork {
+			ch = dummy
+		} else {
+			ch = time.After(w.Interval)
+		}
 		select {
 		case <-w.ch:
 			log.Println("worker done")
 			return
-		case <-time.After(w.Interval):
-			for {
-				if didWork := w.WorkOne(); !didWork {
-					break // didn't do any work, go back to sleep
-				}
-			}
+		case <-ch:
 		}
 	}
 }

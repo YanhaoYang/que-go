@@ -247,21 +247,21 @@ func TestLockJobAdvisoryRace(t *testing.T) {
 		}
 		return backendID
 	}
-	waitUntilBackendIsWaiting := func (backendID int32, name string) {
+	waitUntilBackendIsWaiting := func(backendID int32, name string) {
 		conn := newConn()
 		i := 0
 		for {
-			var waiting bool
-			err := conn.QueryRow(`SELECT pg_stat_get_backend_waiting($1)`, backendID).Scan(&waiting)
+			var s string
+			err := conn.QueryRow(`SELECT pg_stat_get_backend_wait_event_type($1)`, backendID).Scan(&s)
 			if err != nil {
 				panic(err)
 			}
 
-			if waiting {
+			if s != "" {
 				break
 			} else {
 				i++
-				if i >= 10000 / 50 {
+				if i >= 10000/50 {
 					panic(fmt.Sprintf("timed out while waiting for %s", name))
 				}
 

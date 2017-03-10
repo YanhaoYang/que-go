@@ -1,19 +1,34 @@
 package que
 
 import (
+	"os"
 	"testing"
 
 	"github.com/jackc/pgx"
 )
 
-var testConnConfig = pgx.ConnConfig{
-	Host:     "localhost",
-	Database: "que-go-test",
+func connConfig() pgx.ConnConfig {
+	config := pgx.ConnConfig{
+		Host:     "localhost",
+		Database: "que-go-test",
+	}
+
+	dbURL := os.Getenv("DB_URL")
+	var err error
+	if dbURL != "" {
+		config, err = pgx.ParseURI(dbURL)
+		if err != nil {
+			panic("Cannot parse db URL")
+		}
+	}
+	return config
 }
+
+var testConnConfig = connConfig()
 
 func openTestClientMaxConns(t testing.TB, maxConnections int) *Client {
 	connPoolConfig := pgx.ConnPoolConfig{
-		ConnConfig: testConnConfig,
+		ConnConfig:     testConnConfig,
 		MaxConnections: maxConnections,
 		AfterConnect:   PrepareStatements,
 	}
