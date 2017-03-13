@@ -285,6 +285,7 @@ var preparedStatements = map[string]string{
 	"que_lock_job":    sqlLockJob,
 	"que_set_error":   sqlSetError,
 	"que_unlock_job":  sqlUnlockJob,
+	"que_job_stats":   sqlJobStats,
 }
 
 func PrepareStatements(conn *pgx.Conn) error {
@@ -294,4 +295,52 @@ func PrepareStatements(conn *pgx.Conn) error {
 		}
 	}
 	return nil
+}
+
+// JobStats contains data of job stats
+type JobStats struct {
+	Queue             string
+	JobClass          string
+	Count             int64
+	CountWorking      int64
+	CountErrored      int64
+	HighestErrorCount int64
+	OldestRunAt       time.Time
+}
+
+// GetJobStats fetches job stats
+func (c *Client) GetJobStats() (stats []JobStats, err error) {
+	conn, err := c.pool.Acquire()
+	if err != nil {
+		return nil, err
+	}
+	defer c.pool.Release(conn)
+
+	rows, err := conn.Query("que_job_stats")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for {
+		if rows.Next() {
+			js := JobStats{}
+			err = rows.Scan(
+				&js.Queue,
+				&js.JobClass,
+				&js.Count,
+				&js.CountWorking,
+				&js.CountErrored,
+				&js.HighestErrorCount,
+				&js.OldestRunAt,
+			)
+			if err != nil {
+				return nil, err
+			}
+			stats = append(stats, js)
+		} else {
+			break
+		}
+	}
+	return
 }
